@@ -22,7 +22,7 @@ def train_epoch(pipe, model, optim, f_loss):
     return cum_loss / count
 
 
-def test_sentence(test, model, maxlen=20):
+def test_sentence(test, model, vocab, maxlen=20):
     model.eval()
     pred = model(test.unsqueeze(0), maxlen=maxlen)
-    return ' '.join([esp_vocab.get_itos()[t] for t in pred])
+    return ' '.join([vocab.get_itos()[t] for t in pred])
