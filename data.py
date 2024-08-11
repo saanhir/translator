@@ -5,10 +5,11 @@ import spacy
 
 
 class Vocabulary:
-    def __init__(self, specials=[]):
+    def __init__(self, spacy_nlp, specials=[]):
         self.size = 0
         self.stoi = {}
         self.itos = {}
+        self.nlp = spacy_nlp
 
         for s in specials:
             self.insert(s)
@@ -19,13 +20,15 @@ class Vocabulary:
             self.itos[self.size] = token
             self.size += 1
 
+    def tokenize(self, string):
+        doc = self.nlp(string)
+        return [tok.text.lower() for tok in doc]
+
     def __len__(self):
         return self.size
 
-
-def tokenize(string, tokenizer):
-    doc = tokenizer(string)
-    return [t.text.lower() for t in doc]
+    #def __call(self):
+    #    return [torch.tensor([1] + [vocab.stoi[t] for t in row] + [2]) for row in series]
 
 def vocabularize_series(series, vocab):
     return [torch.tensor([1] + [vocab.stoi[t] for t in row] + [2]) for row in series]
