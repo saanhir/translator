@@ -27,11 +27,8 @@ class Vocabulary:
     def __len__(self):
         return self.size
 
-    #def __call(self):
-    #    return [torch.tensor([1] + [vocab.stoi[t] for t in row] + [2]) for row in series]
-
-def vocabularize_series(series, vocab):
-    return [torch.tensor([1] + [vocab.stoi[t] for t in row] + [2]) for row in series]
+    def __call__(self, series):
+        return [torch.tensor([1] + [self.stoi[t] for t in row] + [2]) for row in series]
 
 
 def split_batches(series1, series2, batch_size):
@@ -47,6 +44,7 @@ def split_batches(series1, series2, batch_size):
 def collate(batch):
     batch = batch[0]
     src, trg = batch
+
     src_longest = max([len(x) for x in src])
     srcs = [F.pad(x, (0, src_longest - len(x)), value=0) for x in src]
 

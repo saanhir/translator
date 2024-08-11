@@ -19,12 +19,15 @@ if __name__ == '__main__':
     english = Vocabulary(nlp_eng, specials=['<pad>', '<sos>', '<eos>', '<unk>'])
     spanish = Vocabulary(nlp_esp, specials=['<pad>', '<sos>', '<eos>', '<unk>'])
 
-    data['eng_tokens'] = [english.tokenize(s, nlp_eng) for s in data['english']]
-    data['esp_tokens'] = [spanish.tokenize(s, nlp_esp) for s in data['spanish']]
+    # tokenize
+    data['eng_tokens'] = [english.tokenize(s) for s in data['english']]
+    data['esp_tokens'] = [spanish.tokenize(s) for s in data['spanish']]
     data['eng_num'] = data['eng_tokens'].apply(lambda arr: len(arr) + 2)
     data['esp_num'] = data['esp_tokens'].apply(lambda arr: len(arr) + 2)
+    # sort by length for dynamic padding
     data = data.sort_values(by='eng_num')
 
+    # build vocabs
     for sample in data['eng_tokens']:
         for t in sample:
             english.insert(t)
@@ -45,17 +48,15 @@ if __name__ == '__main__':
     lr = 0.001
     epochs = 25
 
-    # prep dataloader
-    train_batches = split_batches(vocabularize_series(train_data['eng_tokens'], english),
-                                  vocabularize_series(train_data['esp_tokens'], spanish),
+    # prep dataloaders
+    train_batches = split_batches(english(train_data['eng_tokens']),
+                                  spanish(train_data['esp_tokens']),
                                   BATCH_SIZE)
-
     train_dl = DataLoader(dataset=train_batches, collate_fn=collate)
 
-    val_batches = split_batches(vocabularize_series(val_data['eng_tokens'], english),
-                                vocabularize_series(val_data['esp_tokens'], spanish),
+    val_batches = split_batches(english(val_data['eng_tokens']),
+                                spanish(val_data['esp_tokens']),
                                 BATCH_SIZE)
-
     val_dl = DataLoader(dataset=val_batches, collate_fn=collate)
 
     # test live translation
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     # init model
     torch.manual_seed(1337)
     model = EncDec(HIDDEN_SIZE, SRC_EMB, SRC_VOCAB, TRG_EMB, TRG_VOCAB)
-    f_loss = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss()
     optim = torch.optim.Adam(model.parameters(), lr=lr)
 
     # train
@@ -72,18 +73,20 @@ if __name__ == '__main__':
     train_losses = []
     val_losses = []
     for e in range(1, epochs + 1):
-        epoch_loss = train_epoch(train_dl, model, optim, f_loss)
+        epoch_loss = train_epoch(train_dl, model, optim, loss_fn).item()
         train_losses.append(epoch_loss)
 
-        val_loss = validate_epoch(val_dl, model, f_loss).item()
+        val_loss = validate_epoch(val_dl, model, loss_fn).item()
         val_losses.append(val_loss)
 
         t = time.time()
-        print(f"Epoch: {e} --- Loss: {epoch_loss} --- dt: {round((t - prev_time) / 60, 4)} minutes")
+        print(f"Epoch: {e} --- Loss: {epoch_loss} --- dt: {round((t - prev_time) / 60, 4)} min")
         prev_time = t
 
         print(translate_string(test, english, spanish, model))
 
+
+    # plot data
     plt.plot(train_losses, label='train')
     plt.plot(val_losses, label='val')
     plt.legend()
